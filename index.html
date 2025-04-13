@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Message Board</title>
+</head>
+<body>
+  <h1>💬 Message Board</h1>
+  <input type="text" id="messageInput" placeholder="Type a message..." />
+  <button onclick="sendMessage()">Send</button>
+  <button id="googleLoginBtn">Sign in with Google</button>
+
+  <ul id="messagesList"></ul>
+
+  <script type="module">
+    // Import Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+
+    
+
+    // Your Firebase config (replace this with your own!)
+    const firebaseConfig = {
+  apiKey: "AIzaSyAn02sG6Xw8KXHDS0wjoodUjjaJ_tgIyuk",
+  authDomain: "newproject-92374.firebaseapp.com",
+  projectId: "newproject-92374",
+  storageBucket: "newproject-92374.firebasestorage.app",
+  messagingSenderId: "763366897505",
+  appId: "1:763366897505:web:21381c44ce168b6d1e3720",
+  measurementId: "G-LZF0MYHEN6"
+};
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const messagesRef = collection(db, "messages");
+
+    // Send message to Firestore
+    window.sendMessage = async function() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (text) {
+        await addDoc(messagesRef, { text, timestamp: Date.now() });
+        input.value = '';
+      }
+    }
+
+    // Listen for realtime updates
+    onSnapshot(messagesRef, (snapshot) => {
+      const list = document.getElementById('messagesList');
+      list.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const li = document.createElement('li');
+        li.textContent = doc.data().text;
+        list.appendChild(li);
+      });
+    });
+    // Firebase Authentication
+const auth = getAuth();
+const provider = new GoogleAuthProvider();
+
+document.getElementById('googleLoginBtn').addEventListener('click', function() {
+  signInWithPopup(auth, provider)
+    .then((result) => {
+      // User is signed in
+      const user = result.user;
+      console.log("User logged in:", user.displayName);
+      
+      // Optionally, you can save user info to Firestore or display it
+      document.getElementById('messagesList').innerHTML = `<li>Welcome, ${user.displayName}!</li>`;
+
+      // Hide Google login button after sign-in
+      document.getElementById('googleLoginBtn').style.display = 'none';
+    })
+    .catch((error) => {
+      console.error("Error signing in:", error);
+    });
+});
+
+  </script>
+</body>
+</html>
