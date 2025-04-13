@@ -2,26 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Realtime Message Board</title>
+  <title>Save User Progress</title>
 </head>
 <body>
-  <h1>💬 Message Board</h1>
-  <input type="text" id="messageInput" placeholder="Type a message..." />
-  <button onclick="sendMessage()">Send</button>
-  <button id="googleLoginBtn">Sign in with Google</button>
 
-  <ul id="messagesList"></ul>
+<h1>🎮 Game Progress</h1>
 
-  <script type="module">
-    // Import Firebase SDK
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+<button id="googleLoginBtn">Sign in with Google</button>
+<button id="saveProgressBtn" style="display:none;">Save Progress</button>
+<div id="status"></div>
 
-    
+<script type="module">
 
-    // Your Firebase config (replace this with your own!)
-    const firebaseConfig = {
+  // Firebase SDKs
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+  // Your Firebase config
+  const firebaseConfig = {
   apiKey: "AIzaSyAn02sG6Xw8KXHDS0wjoodUjjaJ_tgIyuk",
   authDomain: "newproject-92374.firebaseapp.com",
   projectId: "newproject-92374",
@@ -31,54 +30,61 @@
   measurementId: "G-LZF0MYHEN6"
 };
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth();
+  const provider = new GoogleAuthProvider();
 
-    const messagesRef = collection(db, "messages");
+  const loginBtn = document.getElementById('googleLoginBtn');
+  const saveBtn = document.getElementById('saveProgressBtn');
+  const statusDiv = document.getElementById('status');
 
-    // Send message to Firestore
-    window.sendMessage = async function() {
-      const input = document.getElementById('messageInput');
-      const text = input.value.trim();
-      if (text) {
-        await addDoc(messagesRef, { text, timestamp: Date.now() });
-        input.value = '';
+  // Sign-in with Google
+  loginBtn.addEventListener('click', () => {
+    signInWithPopup(auth, provider)
+      .then(result => {
+        const user = result.user;
+        statusDiv.innerText = `Welcome, ${user.displayName}! Loading your progress...`;
+      })
+      .catch(err => {
+        console.error(err);
+      });
+  });
+
+  // Listen for login state
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      statusDiv.innerText = `Logged in as ${user.displayName}!`;
+      loginBtn.style.display = "none";
+      saveBtn.style.display = "inline-block";
+
+      // Load saved progress
+      const userDocRef = doc(db, "progress", user.uid);
+      const docSnap = await getDoc(userDocRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        statusDiv.innerText = `Welcome back ${user.displayName}! Your saved progress: Level ${data.level}`;
+      } else {
+        statusDiv.innerText = `Hello ${user.displayName}! No saved progress yet.`;
       }
     }
+  });
 
-    // Listen for realtime updates
-    onSnapshot(messagesRef, (snapshot) => {
-      const list = document.getElementById('messagesList');
-      list.innerHTML = "";
-      snapshot.forEach((doc) => {
-        const li = document.createElement('li');
-        li.textContent = doc.data().text;
-        list.appendChild(li);
-      });
+  // Save progress when button clicked
+  saveBtn.addEventListener('click', async () => {
+    const user = auth.currentUser;
+    if (!user) return alert("Please sign in first!");
+
+    const userDocRef = doc(db, "progress", user.uid);
+    await setDoc(userDocRef, {
+      level: 5  // Example: you can make this dynamic!
     });
-    // Firebase Authentication
-const auth = getAuth();
-const provider = new GoogleAuthProvider();
 
-document.getElementById('googleLoginBtn').addEventListener('click', function() {
-  signInWithPopup(auth, provider)
-    .then((result) => {
-      // User is signed in
-      const user = result.user;
-      console.log("User logged in:", user.displayName);
-      
-      // Optionally, you can save user info to Firestore or display it
-      document.getElementById('messagesList').innerHTML = `<li>Welcome, ${user.displayName}!</li>`;
+    statusDiv.innerText = `✅ Progress saved! You are now at Level 5.`;
+  });
 
-      // Hide Google login button after sign-in
-      document.getElementById('googleLoginBtn').style.display = 'none';
-    })
-    .catch((error) => {
-      console.error("Error signing in:", error);
-    });
-});
+</script>
 
-  </script>
 </body>
 </html>
